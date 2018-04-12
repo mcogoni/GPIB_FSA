@@ -3,7 +3,7 @@ import serial, sys, time
 import numpy as np
 import pickle
 from datetime import datetime
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 debug_flag = False
 
@@ -18,9 +18,20 @@ control_index = 10 # Arduino GPIB-USB serial converter (Jacek... GitHub)
 fsas_index = 20    # Rohde-Schwarz Spectrum Analyzer 100Hz-2GHz
 smcp_index = 1     # Rohde-Schwarz Signal Generator 5kHz-1.3GHz
 
-s = serial.Serial("/dev/ttyUSB0", 115200)
+# verify if an active serial port is present
+serial_ports = ["/dev/ttyUSB0", "/dev/ttyUSB1"]
 
-print "Is the serial connection active:", s.isOpen()
+serial_open_flag = False
+for p in serial_ports:
+    s = serial.Serial(p, 115200)
+    if s.isOpen()
+        serial_open_flag = True
+        print "Serial connection active"
+        break
+if not serial_open_flag:
+    print "Serial connection not working!!!"
+    exit()
+    
 
 gpib_buffer_file = "GPIB_tracedump.%s.pickle" % str(datetime.now()).split(".")[0].replace(" ", "_")
 
@@ -32,6 +43,7 @@ def write(cmd):
         print string
     time.sleep(0.5)
 
+# send a serial command followed by a LF CR "\r\n and listen for a reply"
 def query(cmd):
     string = cmd+"\r\n"
     s.write(string)
@@ -50,7 +62,8 @@ def set_listener_talker(listener, talker):
     listener_ = get_listener(listener)
     talker_ = get_talker(talker)
     string = "C_?%s%s" % (listener_, talker_)
-    print listener, talker, string
+    if debug_flag:
+        print "Listens: %d <- Talks: %d -- CMD: %s" % (listener, talker, string)
     write(string)
 
 #########################################    
@@ -69,19 +82,20 @@ query('DTRACE:BLOCK:T_1?') # ask for a trace (1) dump
 # switch control interface to listen to commands and FSAS to talk
 set_listener_talker(control_index, fsas_index)
 
-print "---- NOW RECEIVING DATA FROM FSAS ----"
+print "---- NOW RECEIVING TRACE DUMP DATA FROM FSAS ----"
 
 buffer = ""
-while len(buffer) < TRACE_SIZE:
+while len(buffer) < TRACE_SIZE + 100: # we add some margin since we're adding control strings
     tmp = ""
     write("Y") # read a full buffer of data from the instrument
     time.sleep(0.5) # wait a bit for the data transmission to finish
-
-    while s.inWaiting()>0: #is any character present in the serial buffer
+    tmp += "XXX" # we add a marker to locate different dumps (~395 bytes each)
+    while s.inWaiting()>0: # is any character present in the serial buffer
         tmp += s.read(1) # read one byte
     buffer += tmp
 
-print buffer
+# remove garbage
+buffer = buffer.replace("XXXOK\r\nOK\r\n\xfe", "").replace("XXX\xfe", "")
 
 # Save binary buffer to disk
 with open(gpib_buffer_file, 'wb') as f:
@@ -89,7 +103,7 @@ with open(gpib_buffer_file, 'wb') as f:
 
 
 # let's decode the uncorrected trace information
-raw_trace_data = np.right_shift(np.fromstring(buffer[:], dtype='>i2', count=901), 4)
+raw_trace_data = np.right_shift(np.fromstring(buffer[:], dtype='<i2', count=901), 4)
 
 # let's decode the header information: we don't need everything!
 data_type_dict = {1802:'<B',1803:'<B',1804:'<B', 1805:'<i2', 1807:'<i2', 1809:'<i2', 1811:'<i2',1813:'<B',1814:'<B', 1815:'<i2', 1817:'<B', 1819:'<B', 1853:'<i2',
@@ -106,26 +120,26 @@ for off in data_type_dict:
     data_values_dict[off] = np.fromstring(buffer[off:], dtype=data_type_dict[off], count=1)
     print off, data_values_dict[off],"\t\t", data_descript_dict[off]
 
-exit()    
+    
 ############ Visualization
-#font = {'weight' : 'bold',
-#        'size'   : 18}
+font = {'weight' : 'bold',
+        'size'   : 18}
 
-#matplotlib.rc('font', **font)
+matplotlib.rc('font', **font)
 
-fig = plt.figure(figsize=(16,16))
+fig = figure(figsize=(16,16))
 
-start_freq, stop_freq = np.fromstring(b[1914:], dtype=data_type_dict[1914], count=1)/1e6, np.fromstring(b[1920:], dtype=data_type_dict[1920], count=1)/1e6
-ref_level = np.fromstring(b[1805:], dtype=data_type_dict[1805], count=1)/100.
-rbw = np.fromstring(b[1930:], dtype=data_type_dict[1930], count=1)/1e4
-sweep_time = np.fromstring(b[1926:], dtype=data_type_dict[1926], count=1)/1e4
-rf_att = np.fromstring(b[1813:], dtype=data_type_dict[1813], count=1)
+start_freq, stop_freq = np.fromstring(buffer[1914:], dtype=data_type_dict[1914], count=1)/1e6, np.fromstring(buffer[1920:], dtype=data_type_dict[1920], count=1)/1e6
+ref_level = np.fromstring(buffer[1805:], dtype=data_type_dict[1805], count=1)[0]/100.
+rbw = np.fromstring(buffer[1930:], dtype=data_type_dict[1930], count=1)[0]/1e4
+sweep_time = np.fromstring(buffer[1926:], dtype=data_type_dict[1926], count=1)[0]/1e4
+rf_att = np.fromstring(buffer[1813:], dtype=data_type_dict[1813], count=1)[0]
 
 ax = fig.add_subplot(111)#, axisbg='blue')
 ax.set_facecolor('blue')
 fig.patch.set_facecolor('blue')
-
-trace_data = (raw_trace_data-3938.)/3938.*110-ref_level # FIXME: the range should be decoded from the header data too!
+print ref_level
+trace_data = (raw_trace_data-3938.)/3938.*110+ref_level # FIXME: the range should be decoded from the header data too!
 ax.plot(np.linspace(start_freq, stop_freq, 901), trace_data[:], c='lightgreen')
 grid(color="w")
 xlabel("Freq. (MHz)", color="w", fontweight='bold')
@@ -135,9 +149,9 @@ xlim(start_freq, stop_freq)
 xticks(np.linspace(start_freq, stop_freq, 11), color="w")
 yticks(np.linspace(-110+ref_level, ref_level, 12), color="w")
 title("ROHDE & SCHWARZ FSAS", color='w', fontsize=20)
-rbw_text = "RBW: "+str(rbw[0])+" kHz"
-rf_att_text = "RF Att: "+str(rf_att[0])+" dB"
-sweep_text = "Sweep: "+str(sweep_time[0])+" s"
+rbw_text = "RBW: "+str(rbw)+" kHz"
+rf_att_text = "RF Att: "+str(rf_att)+" dB"
+sweep_text = "Sweep: "+str(sweep_time)+" s"
 ax.text(0.8,1.08, rbw_text, size=15,
      horizontalalignment='left',
      verticalalignment='center', transform=ax.transAxes, color="w")
@@ -149,3 +163,4 @@ ax.text(0.8,1.04, sweep_text,
      verticalalignment='center', transform=ax.transAxes, color="w")
 
 fig.savefig(gpib_buffer_file[:-7] + ".jpg")
+
