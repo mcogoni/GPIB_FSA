@@ -3,12 +3,15 @@ import serial, sys, time
 import numpy as np
 import pickle
 from datetime import datetime
+import matplotlib as plt
+
+debug_flag = False
 
 TRACE_SIZE = 2190 # FSAS dumps 2190 bytes when asked for a trace complete with the header (the first 1802 bytes for 901 points (one int16 each))
 
 # GPIB addressing table
-address_talk = '@' + string.ascii_uppercase # '@ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-address_listen = ''.join([chr(i) for i in range(32,63)]) # ' !"#$%&\'()*+,-./0123456789:;<=>'
+address_talk = list('@' + string.ascii_uppercase) # '@ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+address_listen = list(''.join([chr(i) for i in range(32,63)]) ) # ' !"#$%&\'()*+,-./0123456789:;<=>'
 
 # The addresses of my devices
 control_index = 10 # Arduino GPIB-USB serial converter (Jacek... GitHub)
@@ -17,37 +20,51 @@ smcp_index = 1     # Rohde-Schwarz Signal Generator 5kHz-1.3GHz
 
 s = serial.Serial("/dev/ttyUSB0", 115200)
 
+print "Is the serial connection active:", s.isOpen()
+
 gpib_buffer_file = "GPIB_tracedump.%s.pickle" % str(datetime.now()).split(".")[0].replace(" ", "_")
 
 # send a serial command followed by a LF CR "\r\n"
 def write(cmd):
-    s.write(cmd+"\r\n")
+    string = cmd+"\r\n"
+    s.write(string)
+    if debug_flag:
+        print string
     time.sleep(0.5)
+
+def query(cmd):
+    string = cmd+"\r\n"
+    s.write(string)
+    if debug_flag:
+        print string
+    time.sleep(0.5)
+    print s.readline()
     
 # obtain the talker or listener index from a specific address as specified in the GPIB addressing table
 def get_listener(index):
-    listener = address_listen[index]
+    return address_listen[index]
 def get_talker(index):
-    talker = address_talk[index]
+    return address_talk[index]
 
 def set_listener_talker(listener, talker):
-    listener = get_listener(listener)
-    talker = get_talker(talker)
-    string = "C_?%s%s" % (listener, talker)
+    listener_ = get_listener(listener)
+    talker_ = get_talker(talker)
+    string = "C_?%s%s" % (listener_, talker_)
+    print listener, talker, string
     write(string)
 
 #########################################    
 # Start writing on the serial interface #
 #########################################
 
-write("E") # disable local serial echo
-write("R") # enable remote operations on the GPIB bus
+query("E0") # disable local serial echo
+query("R") # enable remote operations on the GPIB bus
 
 # switch FSAS to listen commands and control inteface to talk
 set_listener_talker(fsas_index, control_index)
 
-write("DF:C 1M") # set the center frequency on the FSAS
-write('DTRACE:BLOCK:T_1?') # ask for a trace (1) dump
+query("DF:C 1M") # set the center frequency on the FSAS
+query('DTRACE:BLOCK:T_1?') # ask for a trace (1) dump
 
 # switch control interface to listen to commands and FSAS to talk
 set_listener_talker(control_index, fsas_index)
@@ -64,13 +81,15 @@ while len(buffer) < TRACE_SIZE:
         tmp += s.read(1) # read one byte
     buffer += tmp
 
+print buffer
+
 # Save binary buffer to disk
 with open(gpib_buffer_file, 'wb') as f:
     pickle.dump(buffer,f)
 
 
 # let's decode the uncorrected trace information
-raw_trace_data = np.right_shift(np.fromstring(b[:], dtype='>i2', count=901), 4)
+raw_trace_data = np.right_shift(np.fromstring(buffer[:], dtype='>i2', count=901), 4)
 
 # let's decode the header information: we don't need everything!
 data_type_dict = {1802:'<B',1803:'<B',1804:'<B', 1805:'<i2', 1807:'<i2', 1809:'<i2', 1811:'<i2',1813:'<B',1814:'<B', 1815:'<i2', 1817:'<B', 1819:'<B', 1853:'<i2',
@@ -84,17 +103,17 @@ data_name_dict = {'mode':1802,'keys1':1803,'keys2':1804, 'ref_level':1805, 'ref_
 data_values_dict = {}
 
 for off in data_type_dict:
-    data_values_dict[off] = np.fromstring(b[off:], dtype=data_type_dict[off], count=1)
-    print off, data_values_dict[off],"\t\t", data_name_dict[off]
+    data_values_dict[off] = np.fromstring(buffer[off:], dtype=data_type_dict[off], count=1)
+    print off, data_values_dict[off],"\t\t", data_descript_dict[off]
 
-    
+exit()    
 ############ Visualization
-font = {'weight' : 'bold',
-        'size'   : 18}
+#font = {'weight' : 'bold',
+#        'size'   : 18}
 
-matplotlib.rc('font', **font)
+#matplotlib.rc('font', **font)
 
-fig = figure(figsize=(16,16))
+fig = plt.figure(figsize=(16,16))
 
 start_freq, stop_freq = np.fromstring(b[1914:], dtype=data_type_dict[1914], count=1)/1e6, np.fromstring(b[1920:], dtype=data_type_dict[1920], count=1)/1e6
 ref_level = np.fromstring(b[1805:], dtype=data_type_dict[1805], count=1)/100.
@@ -119,7 +138,7 @@ title("ROHDE & SCHWARZ FSAS", color='w', fontsize=20)
 rbw_text = "RBW: "+str(rbw[0])+" kHz"
 rf_att_text = "RF Att: "+str(rf_att[0])+" dB"
 sweep_text = "Sweep: "+str(sweep_time[0])+" s"
-ax.text(0.8,1.08, rbw_text, size=15
+ax.text(0.8,1.08, rbw_text, size=15,
      horizontalalignment='left',
      verticalalignment='center', transform=ax.transAxes, color="w")
 ax.text(0.8,1.06, rf_att_text,
