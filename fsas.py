@@ -9,6 +9,8 @@ debug_flag = False
 
 TRACE_SIZE = 2190 # FSAS dumps 2190 bytes when asked for a trace complete with the header (the first 1802 bytes for 901 points (one int16 each))
 
+GPIB_delay = 0.5
+
 # GPIB addressing table
 address_talk = list('@' + string.ascii_uppercase) # '@ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 address_listen = list(''.join([chr(i) for i in range(32,63)]) ) # ' !"#$%&\'()*+,-./0123456789:;<=>'
@@ -41,7 +43,7 @@ def write(cmd):
     s.write(string)
     if debug_flag:
         print string
-    time.sleep(0.5)
+    time.sleep(GPIB_delay)
 
 # send a serial command followed by a LF CR "\r\n and listen for a reply"
 def query(cmd):
@@ -49,7 +51,7 @@ def query(cmd):
     s.write(string)
     if debug_flag:
         print string
-    time.sleep(0.5)
+    time.sleep(GPIB_delay)
     print s.readline()
     
 # obtain the talker or listener index from a specific address as specified in the GPIB addressing table
@@ -88,7 +90,7 @@ buffer = ""
 while len(buffer) < TRACE_SIZE + 100: # we add some margin since we're adding control strings
     tmp = ""
     write("Y") # read a full buffer of data from the instrument
-    time.sleep(0.5) # wait a bit for the data transmission to finish
+    time.sleep(GPIB_delay) # wait a bit for the data transmission to finish
     tmp += "XXX" # we add a marker to locate different dumps (~395 bytes each)
     while s.inWaiting()>0: # is any character present in the serial buffer
         tmp += s.read(1) # read one byte
@@ -106,16 +108,21 @@ with open(gpib_buffer_file, 'wb') as f:
 raw_trace_data = np.right_shift(np.fromstring(buffer[:], dtype='<i2', count=901), 4)
 
 # let's decode the header information: we don't need everything!
+
+# this dictionary contains low level data types for each FSAS property at its byte offset
 data_type_dict = {1802:'<B',1803:'<B',1804:'<B', 1805:'<i2', 1807:'<i2', 1809:'<i2', 1811:'<i2',1813:'<B',1814:'<B', 1815:'<i2', 1817:'<B', 1819:'<B', 1853:'<i2',
                  1896:'<i4', 1914:'<i4', 1920:'<i4', 1926:'<i4', 1930:'<i4'}
+# each offset has its full description
 data_descript_dict = {1802:'Mode (3: Freq. Analyzer, 4: Scalar Network Analyzer, 6:Communication Analyzer, 7: Receiver)',1803:'keys',1804:'keys', 1805:'Ref. Level (dB * 0.01)', 1807:'Ref. Level Offset (dB * 0.01)', 1809:'Lev. Tracking Gen. (dB * 0.01)', 1811:'Lev. Offset Tracking Gen. (dB * 0.01)',
                   1813:'RF Attenuator (dB)',1814:'Tracking Generator Attenuation (dB)', 1815:'Mixer Level (dB * 0.01)', 1817:"Range etc", 1819:"Units", 1853:'Averaging Samples',
                  1896:'Center Freq. (Hz)', 1914:'Start Freq. (Hz)', 1920:'Stop Freq. (Hz)', 1926:'Sweep Time (0.1 ms)', 1930:'RBW (Hz)'}
+# each property has a concise name linked to the byte offset
 data_name_dict = {'mode':1802,'keys1':1803,'keys2':1804, 'ref_level':1805, 'ref_level_offset':1807, 'level_tracking_gen':1809, 'level_offset_tracking_gen':1811,
                   'rf_att':1813,'tracking_gen_att':1814, 'mixer_level':1815, "range":1817, "units":1819, 'avg_samples':1853,
                  'ceter_freq':1896, 'start_freq':1914, 'stop_freq':1920, 'sweep_time':1926, 'rbw':1930}
 data_values_dict = {}
 
+# read in the values
 for off in data_type_dict:
     data_values_dict[off] = np.fromstring(buffer[off:], dtype=data_type_dict[off], count=1)
     print off, data_values_dict[off],"\t\t", data_descript_dict[off]
@@ -127,7 +134,7 @@ font = {'weight' : 'bold',
 
 matplotlib.rc('font', **font)
 
-fig = figure(figsize=(16,16))
+fig = plt.figure(figsize=(16,16))
 
 start_freq, stop_freq = np.fromstring(buffer[1914:], dtype=data_type_dict[1914], count=1)/1e6, np.fromstring(buffer[1920:], dtype=data_type_dict[1920], count=1)/1e6
 ref_level = np.fromstring(buffer[1805:], dtype=data_type_dict[1805], count=1)[0]/100.
