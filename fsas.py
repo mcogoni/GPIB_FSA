@@ -45,8 +45,8 @@ def query(cmd):
     
 # obtain the talker or listener index from a specific address as specified in the GPIB addressing table
 def set_listener_talker(listener, talker):
-    listener_ = address_listen(listener)
-    talker_ = address_talk(talker)
+    listener_ = address_listen[listener]
+    talker_ = address_talk[talker]
     string = "C_?%s%s" % (listener_, talker_)
     if debug_flag:
         print "Listens: %d <- Talks: %d -- CMD: %s" % (listener, talker, string)
@@ -235,8 +235,13 @@ ax = fig.add_subplot(111)#, axisbg='blue')
 ax.set_facecolor('blue')
 fig.patch.set_facecolor('blue')
 
-trace_data = (raw_trace_data-3938.)/3938.*(range_range)+ref_level+ref_level_offset # FIXME: the range should be decoded from the header data too!
-plt.plot(np.linspace(start_freq, stop_freq, 901), trace_data[:], c='lightgreen')
+if range_scaling == 'log':
+    trace_data = (raw_trace_data-3938.)/3938.*(range_range)+ref_level
+    plt.plot(np.linspace(start_freq, stop_freq, 901), trace_data[:], c='lightgreen')
+else:
+    trace_data = np.log(raw_trace_data)/3938.+ref_level
+    plt.semilogy(np.linspace(start_freq, stop_freq, 901), trace_data[:], c='lightgreen')
+
 
 plt.grid(color="w")
 plt.xlabel("Freq. (MHz)", color="w", fontweight='bold')
@@ -244,7 +249,7 @@ plt.ylabel("Power (dBm)", color="w", fontweight='bold')
 plt.ylim(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset)
 plt.xlim(start_freq, stop_freq)
 plt.xticks(np.linspace(start_freq, stop_freq, 11), color="w")
-plt.yticks(np.linspace(-range_range+ref_level, ref_level, 12), color="w")
+plt.yticks(np.linspace(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset, 12), color="w")
 plt.title("ROHDE & SCHWARZ FSAS", color='w', fontsize=20)
 rbw_text = "RBW: "+str(rbw)+" kHz"
 rf_att_text = "RF Att: "+str(rf_att)+" dB"
