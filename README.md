@@ -7,6 +7,12 @@ In the python source you may customize your equipment addresses, serial interfac
 
 I'm currently working on making an automated system to get the trace data from the FSAS to continuously monitor a wide frequency band and to be able to create a waterfall from 0 to 2 GHz with various bandwidths.
 
+To use the program, just run on a terminal:
+
+`python fsas.py`
+
+it will then print instructions on how to use: direct capture from instrument or existing tracedump (re-)processing.
+
 Have fun!
 
 ![Original FSAS image](https://github.com/mcogoni/GPIB_FSA/blob/master/FSAS_AM_signal.jpg)
