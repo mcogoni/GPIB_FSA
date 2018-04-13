@@ -6,7 +6,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import os.path
 
-debug_flag = True
+debug_flag = False
 
 filename = None
 
@@ -54,6 +54,7 @@ if not filename:
         if os.path.exists(p):
             #s = serial.Serial(port=p, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=None, xonxoff=0, rtscts=0)
             s = serial.Serial(port=p, baudrate=115200)
+            time.sleep(3)
             if s.isOpen():
                 serial_open_flag = True
                 print "Serial connection active:", p
@@ -77,11 +78,11 @@ def write(cmd):
 def query(cmd):
     string = cmd+"\r\n"
     s.write(string)
-    if debug_flag:
-        print string
     time.sleep(GPIB_delay)
     if s.inWaiting():
-        print s.readline()
+        tmp = s.readline()
+    if debug_flag:
+        print string, tmp
     
 # obtain the talker or listener index from a specific address as specified in the GPIB addressing table
 def get_listener(index):
@@ -129,7 +130,9 @@ if not filename:
         buffer += tmp
 
     # remove garbage
-    buffer = buffer.replace("XXXOK\r\nOK\r\n\xfe", "").replace("XXX\xfe", "")
+    buffer = buffer.replace("XXXOK\r\nOK\r\nOK\r\n\xfe", "").replace("XXX\xfe", "")
+    
+    s.close()
 
     # Save binary buffer to disk
     with open(gpib_buffer_file, 'wb') as f:
