@@ -216,9 +216,9 @@ def read_trace_data():
 
 
 print "---------------------------"
-print "--- Rohde-Schwarz  FSAS ---"
-print "---  Spectrum Analyzer  ---"
-print "---   TRACE DUMP TOOL   ---"
+print "---    Rohde-Schwarz    ---"
+print "---  GPIB-SPCI COMMAND  ---"
+print "---     INTERPRETER     ---"
 print "---------------------------"
 print "--- marco cogoni IS0KYB ---"
 print "---------------------------"
@@ -226,38 +226,31 @@ print
 
 if len(sys.argv) == 1: # no command line options
     print "Command line options:\n"
-    print "-f tracedump.pickle\t -> load a saved tracedump from File and process it producing an out image and print FSAS data"
-    print "-c\t\t\t -> use the GPIB bus to Capture a trace dump from the FSAS\n"
+    print "-p commands.txt\t -> load a command sequence from an external file and process it"
     exit()
-elif len(sys.argv) == 2: # capture a new trace
-    if sys.argv[1] == "-c":
-        pass
 elif len(sys.argv) == 3: # don't connect to the FSAS, just load an old tracedump from file
-    if sys.argv[1] == "-f":
-        filename = sys.argv[2]
-        with open(filename, "rb") as fn:
-            dump_data = pickle.load(fn)
-            print "... loading file to process ...\n"
-
-    elif sys.argv[1] == "-p": # load program from file
+    if sys.argv[1] == "-p": # load program from file
         prog_name = sys.argv[2]
         with open(prog_name, "rb") as fd:
             buff_program = fd.readlines()
             print "... loading program <%s> to run! ...\n" % prog_name
+    else:
+        exit("Attention! Unknown option!")
+else:
+    exit("Attention! Wrong number of options!")
 
-if not filename:
-    for p in serial_ports:
-        if os.path.exists(p):
-            #s = serial.Serial(port=p, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=None, xonxoff=0, rtscts=0)
-            s = serial.Serial(port=p, baudrate=115200)
-            time.sleep(3)
-            if s.isOpen():
-                serial_open_flag = True
-                print "Active Serial Connection:", p
-                break
-    if not serial_open_flag:
-        print "Serial connection not working!!!"
-        exit()
+for p in serial_ports:
+    if os.path.exists(p):
+        #s = serial.Serial(port=p, baudrate=115200, bytesize=8, parity='N', stopbits=1, timeout=None, xonxoff=0, rtscts=0)
+        s = serial.Serial(port=p, baudrate=115200)
+        time.sleep(3)
+        if s.isOpen():
+            serial_open_flag = True
+            print "Active Serial Connection:", p
+            break
+if not serial_open_flag:
+    print "Serial connection not working!!!"
+    exit()
         
 
 gpib_buff_file = "GPIB_tracedump.%s.pickle" % str(datetime.now()).split(".")[0].replace(" ", "_")
