@@ -38,8 +38,11 @@ def query(cmd):
     string = cmd+"\r\n"
     s.write(string)
     time.sleep(GPIB_delay)
-    if s.inWaiting():
-        tmp = s.readline()
+#    if s.inWaiting():
+#        tmp = s.readline()
+    tmp = ""
+    while s.inWaiting():
+        tmp += s.read(1) 
     if debug_flag:
         print string, tmp
     
@@ -67,13 +70,12 @@ def read_trace_data():
         tmp = ""
         write("Y") # read a full buffer of data from the instrument
         time.sleep(GPIB_delay) # wait a bit for the data transmission to finish
-        tmp += "XXX" # we add a marker to locate different dumps (~395 bytes each)
         while s.inWaiting()>0: # is any character present in the serial buffer
             tmp += s.read(1) # read one byte
         buffer += tmp
-
+        buffer += "XXX" # we add a marker to locate different dumps (~395 bytes each)
     # remove garbage from buffer and return
-    return buffer.replace("XXXOK\r\nOK\r\nOK\r\n\xfe", "").replace("XXX\xfe", "")
+    return buffer.replace("OK\r\n\xfe", "").replace("XXX\xfe", "")
 
 print "---------------------------"
 print "--- Rohde-Schwarz  FSAS ---"
@@ -238,18 +240,21 @@ fig.patch.set_facecolor('blue')
 if range_scaling == 'log':
     trace_data = (raw_trace_data-3938.)/3938.*(range_range)+ref_level
     plt.plot(np.linspace(start_freq, stop_freq, 901), trace_data[:], c='lightgreen')
-else:
-    trace_data = np.log(raw_trace_data)/3938.+ref_level
-    plt.semilogy(np.linspace(start_freq, stop_freq, 901), trace_data[:], c='lightgreen')
+    plt.ylim(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset)
+    plt.yticks(np.linspace(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset, 12), color="w")
+else: # linear scaling incomplete!
+    trace_data = (2000. * np.log10(raw_trace_data/3938.)+ref_level)
+    plt.plot(np.linspace(start_freq, stop_freq, 901), trace_data[:], c='lightgreen')
+    #plt.yscale('symlog')
+#    plt.ylim(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset)
+#    plt.yticks(np.linspace(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset, 12), color="w")
 
 
 plt.grid(color="w")
 plt.xlabel("Freq. (MHz)", color="w", fontweight='bold')
 plt.ylabel("Power (dBm)", color="w", fontweight='bold')
-plt.ylim(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset)
 plt.xlim(start_freq, stop_freq)
 plt.xticks(np.linspace(start_freq, stop_freq, 11), color="w")
-plt.yticks(np.linspace(-range_range+ref_level+ref_level_offset, ref_level+ref_level_offset, 12), color="w")
 plt.title("ROHDE & SCHWARZ FSAS", color='w', fontsize=20)
 rbw_text = "RBW: "+str(rbw)+" kHz"
 rf_att_text = "RF Att: "+str(rf_att)+" dB"
