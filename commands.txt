@@ -1,0 +1,43 @@
+# EXAMPLE OF SCRIPT SENDING SPCI COMMANDS TO TWO GPIB-ENABLED INSTRUMENTS
+# The dollar symbol tells the interpreter to use/initialize a local variable
+# to some value coming after the assignment symbol. No spaces allowed.
+# Comments should start with a # symbol.
+# Meta functions such as trace dump etc should be called with a starting !
+# and the arguments as in (x, y, z). Arguments may be scalar values or
+# variables earlier predefined by the user
+
+$CONTROL:=10
+$FSAS:=20
+$SMCP:=1
+$DELAY:=3
+
+# SPCI COMMANDS
+
+E0
+R
+
+!set_listener_talker(SMCP, CONTROL)
+D1.2MH
+D-14.8DB
+
+!set_listener_talker(FSAS, CONTROL)
+DF:C 1M;SPAN 2M
+SWEEP:1SF
+!read_trace_data()
+
+!set_listener_talker(SMCP, CONTROL)
+D133.0MH
+D-54.8DB
+!delay(DELAY)
+DF0
+!delay(DELAY)
+DF1
+
+!set_listener_talker(FSAS, CONTROL)
+DF:C 133.0M;SPAN 1M
+SWEEP:1sF
+!read_trace_data()
+
+!read_trace_data()
+
+R
