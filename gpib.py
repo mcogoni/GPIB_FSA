@@ -291,7 +291,7 @@ for row in buff_program:
         if "" in args_:
             args_.remove("")
         print "CALLING METAFUNCTION:", func, args_
-        if len(args_)>1:
+        if len(args_)>=1:
             meta_func_dict[func](*args_)
         else:
             meta_func_dict[func]()
