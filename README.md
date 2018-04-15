@@ -19,7 +19,22 @@ I included an example script called `commands.txt` that should be processed in t
 `python gpib.py -p commands.txt`
 If you have more than one trace dump, I save them all to a multi page PDF file instead of filling your directory with JPGs. The PDF file will overwrite the `output.pdf` every time: be advised!
 
-Notice that at the moment the trace dump metafunction is not working correctly due to a dirty buffer. Should fix this soon.
+Instead of having to modify the python source code for every analysis you plan, I implemented a very basic (pun intended :) ) command interpreter to control any GPIB enabled instrument you have connected.
+
+At the moment you can do the following operations:
+- write comments, disregarded by the interpreter;
+- define new user variables: they may be integers, floats or strings (the variables CANNOT be used inside GPIB commands yet!) but they can be given to user defined functions in the Python code. Variable values still cannot be dynamically modified like A=A+1, future development...;
+- use GOTO commands to skip certain parts of the analysis;
+- call user definable complex functions. At the moment I just defined three:
+    - delay,
+    - trace_dump (from my FSAS)
+    - set_listener_talker
+- the output of the trace dumps will go to a multipage PDF file along with their TITLE;
+- the raw pickle output gets overwritten at the moment and only the last one is kept: be careful :)
+
+Next I'll try to implement LOOPS in order to be able to perform optimization analyses actively varying some parameters such as tracking generator frequency and amplitude or sending GPIB commads to user ports etc.
+
+
 Please study the `commands.txt` to understand the basic scripting rules.
 
 
