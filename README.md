@@ -37,7 +37,7 @@ Next I'll try to implement LOOPS in order to be able to perform optimization ana
 
 Please study the `commands.txt` to understand the basic scripting rules.
 
-THE CODE IS RELEASED UNDER THE GPL V3.0. DONATIONS TO cogoni AT gmail DOT com are welcome and will contribute to make me work on the project! Thanks.
+THE CODE IS RELEASED UNDER THE GPL V3.0. Donations via PayPal TO cogoni AT gmail DOT com are welcome and will contribute to make me work on the project! Thanks.
 
 Have fun!
 
