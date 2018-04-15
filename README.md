@@ -13,10 +13,11 @@ To use the program, just run on a terminal:
 it will then print instructions on how to use: direct capture from instrument or existing tracedump (re-)processing.
 
 ## General processing tool (under heavy development)
-The second tool I am currently developing (so it is a bit bug ridden...) is `gpib.py`. With this you can create a different text file for each analysis operating over all your GPIB connected instruments.
-At the moment I implemented a very basic (but intuitive) scripting language that can help you modularize sequences of commands, create local variables, calling metafunctions defined in the Python source code for dealing with complex IN/OUT like the trace dump of the basic tool `fsas.py`.
+The second tool I am currently developing (so it certainly has some small bug...) is `gpib.py`. With this you can create a different text file for each analysis operating over all your GPIB connected instruments.
+At the moment I implemented a very basic (but intuitive) scripting language that can help you modularize sequences of commands, create local variables, calling metafunctions defined in the Python source code for dealing with complex IN/OUT like the trace dump of the basic tool `fsas.py`. Be careful that `GOTO` commands only go forward for now, so no loops yet ;)
 I included an example script called `commands.txt` that should be processed in this way:
 `python gpib.py -p commands.txt`
+If you have more than one trace dump, I save them all to a multi page PDF file instead of filling your directory with JPGs. The PDF file will overwrite the `output.pdf` every time: be advised!
 
 Notice that at the moment the trace dump metafunction is not working correctly due to a dirty buffer. Should fix this soon.
 Please study the `commands.txt` to understand the basic scripting rules.
