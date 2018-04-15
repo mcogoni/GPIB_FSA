@@ -69,6 +69,10 @@ def read_trace_data():
     # switch control interface to listen to commands and FSAS to talk
     set_listener_talker(control_index, fsas_index)
 
+    print "Flushing the serial queue..."
+    while s.inWaiting(): # flush the serial interface before beginning
+        s.read(1)
+
     print "---- NOW RECEIVING TRACE DUMP DATA FROM FSAS ----"
 
     buff = ""
@@ -81,7 +85,7 @@ def read_trace_data():
         buff += tmp
         buff += "XXX" # we add a marker to locate different dumps (~395 bytes each)
     # remove garbage from buff and return
-    buff = buff.replace("OK\r\n\xfe", "").replace("XXX\xfe", "")
+    buff = buff.replace("OK\r\n\xfe", "").replace("XXX\xfe", "")[1:]
 
     # Save binary buffer to disk
     with open(gpib_buff_file, 'wb') as f:
@@ -264,6 +268,7 @@ while s.inWaiting(): # flush the serial interface before beginning
     s.read(1)
 
 
+skipping_until = False
 # Meta GPIB-SPCI INTERPRETER
 user_dict = {}
 meta_func_dict = {"set_listener_talker":set_listener_talker, "read_trace_data":read_trace_data, "delay":delay}
@@ -272,7 +277,14 @@ for row in buff_program:
     print row.rstrip()
     if row[0] == "#":
         continue
-    if "#" in row:
+    if skipping_until and row[0] == ":":
+        if row[1:] == skipping_until:
+            skipping_until = False
+    elif skipping_until and row[0] != ":":
+        print "SKIP! ",
+        continue
+
+    elif "#" in row:
         row = row.split("#")[0].rstrip()
     elif row[0]=="$" and ":=" in row:
         var, val = row[1:].split(":=")[0], int(row[1:].split(":=")[1])
@@ -295,7 +307,9 @@ for row in buff_program:
             meta_func_dict[func](*args_)
         else:
             meta_func_dict[func]()
-
+    elif row[0:5]=="GOTO:":
+        skipping_until = row.split(":")[1] #.strip()
+        print "SKIP TIL", skipping_until
     else: # run generic GPIB-SPCI command
         query(row)
     
