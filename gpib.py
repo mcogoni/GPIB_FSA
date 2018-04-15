@@ -45,7 +45,7 @@ def cprint(string, color):
     print color + string + bcolors.ENDC
 
 def delay(t):
-    time.sleep(t)
+    time.sleep(float(t))
 
 # send a serial command followed by a LF CR "\r\n"
 def write(cmd):
@@ -70,15 +70,15 @@ def query(cmd):
     
 # obtain the talker or listener index from a specific address as specified in the GPIB addressing table
 def set_listener_talker(listener, talker):
-    listener_ = address_listen[listener]
-    talker_ = address_talk[talker]
+    listener_ = address_listen[int(listener)]
+    talker_ = address_talk[int(talker)]
     string = "C_?%s%s" % (listener_, talker_)
     if debug_flag:
         p = "Listens: %d <- Talks: %d -- CMD: %s" % (listener, talker, string)
         cprint(p , bcolors.OKBLUE)
     write(string)
 
-def read_trace_data():
+def read_trace_data(trace_name):
     TRACE_SIZE = 2190 # FSAS dumps 2190 bytes when asked for a trace complete with the header (the first 1802 bytes for 901 points (one int16 each))
 
     query('DTRACE:BLOCK:T_1?') # ask for a trace (1) dump
@@ -107,7 +107,7 @@ def read_trace_data():
     buff = buff.replace("OK\r\n\xfe", "").replace("XXX\xfe", "")[1:]
 
     # Save binary buffer to disk
-    with open(gpib_buff_file, 'wb') as f:
+    with open(trace_name+gpib_buff_file, 'wb') as f:
         pickle.dump(buff,f)
 
     # let's decode the uncorrected trace information:
@@ -220,7 +220,7 @@ def read_trace_data():
     plt.ylabel("Power (dBm)", color="w", fontweight='bold')
     plt.xlim(start_freq, stop_freq)
     plt.xticks(np.linspace(start_freq, stop_freq, 11), color="w")
-    plt.title("ROHDE & SCHWARZ FSAS", color='w', fontsize=20)
+    plt.title("ROHDE & SCHWARZ FSAS "+trace_name, color='w', fontsize=20)
     rbw_text = "RBW: "+str(rbw)+" kHz"
     rf_att_text = "RF Att: "+str(rf_att)+" dB"
     sweep_text = "Sweep: "+str(sweep_time)+" s"
@@ -307,7 +307,7 @@ for row in buff_program:
     elif "#" in row:
         row = row.split("#")[0].rstrip()
     elif row[0]=="$" and ":=" in row:
-        var, val = row[1:].split(":=")[0], int(row[1:].split(":=")[1])
+        var, val = row[1:].split(":=")[0], (row[1:].split(":=")[1])
         user_dict[var] = val
         print "DEFINED NEW USER VARIABLE:", var, "=", user_dict[var]
     elif row[0]=="!":
@@ -316,7 +316,7 @@ for row in buff_program:
         args_ = []
         for el in args:
             if el in user_dict.keys():
-                tmp = user_dict[el]
+                tmp = user_dict[el].strip()
                 args_.append(tmp)
             else:
                 args_.append(el)
