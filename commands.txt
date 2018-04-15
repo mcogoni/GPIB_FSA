@@ -27,7 +27,7 @@ DF:C 1M;SPAN 2M
 DSWEEP:TIME FIXED
 DSWEEP:TIME 1S
 
-$TRACE_NAME:=prima_traccia
+$TRACE_NAME:=F1MHZ
 !read_trace_data(TRACE_NAME)
 
 :cheeseburger
@@ -43,7 +43,7 @@ DF1
 !set_listener_talker(FSAS, CONTROL)
 DF:C 133.0M;SPAN 1M
 DSWEEP:TIME 100MS
-$TRACE_NAME:=seconda_traccia
+$TRACE_NAME:=F133MHZ
 !read_trace_data(TRACE_NAME)
 
 R
