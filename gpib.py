@@ -5,6 +5,20 @@ import pickle
 from datetime import datetime
 import matplotlib.pyplot as plt
 import os.path
+import matplotlib.backends.backend_pdf
+
+# DEFINE TERMINAL PRINT COLORS
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+pdf = matplotlib.backends.backend_pdf.PdfPages("output.pdf")
 
 debug_flag = False # becomes a bit more verbose
 filename = None # set to the pickle file we want to load instead of capturing a new trace
@@ -27,6 +41,8 @@ serial_open_flag = False
 
 buff = "" # define a global buffer
 
+def cprint(string, color):
+    print color + string + bcolors.ENDC
 
 def delay(t):
     time.sleep(t)
@@ -36,7 +52,7 @@ def write(cmd):
     string = cmd+"\r\n"
     s.write(string)
     if debug_flag:
-        print string
+        cprint(string, bcolors.OKBLUE)
     time.sleep(GPIB_delay)
 
 # send a serial command followed by a LF CR "\r\n and listen for a reply"
@@ -50,7 +66,7 @@ def query(cmd):
     while s.inWaiting():
         tmp += s.read(1) 
     if debug_flag:
-        print string, tmp
+        cprint(string+" "+tmp , bcolors.OKBLUE)
     
 # obtain the talker or listener index from a specific address as specified in the GPIB addressing table
 def set_listener_talker(listener, talker):
@@ -58,7 +74,8 @@ def set_listener_talker(listener, talker):
     talker_ = address_talk[talker]
     string = "C_?%s%s" % (listener_, talker_)
     if debug_flag:
-        print "Listens: %d <- Talks: %d -- CMD: %s" % (listener, talker, string)
+        p = "Listens: %d <- Talks: %d -- CMD: %s" % (listener, talker, string)
+        cprint(p , bcolors.OKBLUE)
     write(string)
 
 def read_trace_data():
@@ -69,11 +86,13 @@ def read_trace_data():
     # switch control interface to listen to commands and FSAS to talk
     set_listener_talker(control_index, fsas_index)
 
-    print "Flushing the serial queue..."
+    p = "Flushing the serial queue..."
+    cprint(p , bcolors.OKGREEN)
     while s.inWaiting(): # flush the serial interface before beginning
         s.read(1)
 
-    print "---- NOW RECEIVING TRACE DUMP DATA FROM FSAS ----"
+    p = "---- NOW RECEIVING TRACE DUMP DATA FROM FSAS ----"
+    cprint(p , bcolors.WARNING)
 
     buff = ""
     while len(buff) < TRACE_SIZE + 10: # we add some margin since we're adding control strings
@@ -114,9 +133,9 @@ def read_trace_data():
     data_values_dict = {}
 
     # read in the values
-    print "------------------------------"
-    print "A few parameters from the FSAS"
-    print "------------------------------\n"
+    cprint("------------------------------", bcolors.OKGREEN)
+    cprint("A few parameters from the FSAS", bcolors.OKGREEN)
+    cprint("------------------------------\n", bcolors.OKGREEN)
     for off in data_type_dict:
         data_values_dict[off] = np.fromstring(buff[off:], dtype=data_type_dict[off], count=1)
         print "byte offset:", off, "value:", data_values_dict[off][0],"\t\t", data_descript_dict[off]
@@ -215,7 +234,8 @@ def read_trace_data():
          horizontalalignment='left',
          verticalalignment='center', transform=ax.transAxes, color="w")
 
-    fig.savefig(gpib_buff_file[:-7] + ".png", frameon=True, facecolor='b', edgecolor='b',)
+    pdf.savefig(fig, frameon=True, facecolor='b', edgecolor='b',)
+
 
 
 
@@ -315,5 +335,5 @@ for row in buff_program:
     
 s.close() # close serial connection
 
-
+pdf.close()
 

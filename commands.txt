@@ -1,4 +1,4 @@
-# EXAMPLE OF SCRIPT SENDING SPCI COMMANDS TO TWO GPIB-ENABLED INSTRUMENTS
+s EXAMPLE OF SCRIPT SENDING SPCI COMMANDS TO TWO GPIB-ENABLED INSTRUMENTS
 # The dollar symbol tells the interpreter to use/initialize a local variable
 # to some value coming after the assignment symbol. No spaces allowed.
 # Comments should start with a # symbol.
@@ -16,14 +16,19 @@ $DELAY:=3
 E0
 R
 
+#GOTO:cheeseburger
+
 !set_listener_talker(SMCP, CONTROL)
 D1.2MH
 D-14.8DB
 
 !set_listener_talker(FSAS, CONTROL)
 DF:C 1M;SPAN 2M
-SWEEP:1SF
+DSWEEP:TIME FIXED
+DSWEEP:TIME 1S
 !read_trace_data()
+
+:cheeseburger
 
 !set_listener_talker(SMCP, CONTROL)
 D133.0MH
@@ -35,9 +40,7 @@ DF1
 
 !set_listener_talker(FSAS, CONTROL)
 DF:C 133.0M;SPAN 1M
-SWEEP:1sF
-!read_trace_data()
-
+DSWEEP:TIME 100MS
 !read_trace_data()
 
 R
